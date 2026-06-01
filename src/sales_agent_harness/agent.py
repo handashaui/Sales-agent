@@ -73,7 +73,9 @@ class SalesAgent:
                 "这个问题需要销售顾问人工确认，我已经为你转接。"
                 "在人工跟进前，我不会编造价格、客户案例或合同承诺。"
             )
-            self._write_followup_note(lead_id, state, "Human handoff requested")
+            self._write_followup_note(
+                lead_id, state, "Human handoff requested", tool_calls
+            )
             return AgentOutput(message, tool_calls, state)
 
         if self._asks_sensitive_claim(latest_user):
@@ -89,11 +91,22 @@ class SalesAgent:
                 "我不能直接给出未确认的价格、客户案例或承诺。"
                 "我可以先基于你们的场景整理需求，并安排销售顾问确认准确方案。"
             )
-            self._write_followup_note(lead_id, state, "Sensitive claim avoided")
+            self._write_followup_note(
+                lead_id, state, "Sensitive claim avoided", tool_calls
+            )
             return AgentOutput(message, tool_calls, state)
 
         if self._wants_demo(transcript):
             return self._handle_demo(lead_id, latest_user, transcript, state, tool_calls)
+
+        if state.qualification_level == "low":
+            state.next_action = "clarify"
+            message = (
+                "可以了解。你这个场景看起来更像学习或调研，我先简单说明："
+                "销售 AI 主要用于线索分级、跟进提醒和 CRM 记录。"
+                "如果你是在做研究，可以告诉我你想比较哪一类能力。"
+            )
+            return AgentOutput(message, tool_calls, state)
 
         if self._has_business_context(transcript):
             self._call_tool(
@@ -229,6 +242,8 @@ class SalesAgent:
         }
 
     def _qualify(self, facts: dict[str, Any], transcript: str) -> str:
+        if "学生" in transcript or "作业" in transcript:
+            return "low"
         score = 0
         if facts["has_company"]:
             score += 1
@@ -240,12 +255,14 @@ class SalesAgent:
             score += 2
         if any(num >= 100 for num in facts["numbers"]):
             score += 1
-        if score >= 4:
+        if score >= 4 or (
+            any(num >= 100 for num in facts["numbers"])
+            and facts["has_sales_team"]
+            and facts["has_pain"]
+        ):
             return "high"
         if score >= 2:
             return "medium"
-        if "学生" in transcript or "作业" in transcript:
-            return "low"
         return "unknown"
 
     def _missing_info(self, facts: dict[str, Any], transcript: str) -> list[str]:
