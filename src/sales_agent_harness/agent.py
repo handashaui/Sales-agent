@@ -6,6 +6,7 @@ import re
 import uuid
 from typing import Any
 
+from .llm import maybe_rewrite_message
 from .models import AgentOutput, AgentState, ConversationTurn, ToolCallRecord
 from .prompts import get_system_prompt
 from .tools import MockToolRuntime
@@ -76,7 +77,7 @@ class SalesAgent:
             self._write_followup_note(
                 lead_id, state, "Human handoff requested", tool_calls
             )
-            return AgentOutput(message, tool_calls, state)
+            return self._output(message, tool_calls, state, transcript)
 
         if self._asks_sensitive_claim(latest_user):
             self._call_tool(
@@ -94,7 +95,7 @@ class SalesAgent:
             self._write_followup_note(
                 lead_id, state, "Sensitive claim avoided", tool_calls
             )
-            return AgentOutput(message, tool_calls, state)
+            return self._output(message, tool_calls, state, transcript)
 
         if self._wants_demo(transcript):
             return self._handle_demo(lead_id, latest_user, transcript, state, tool_calls)
@@ -106,7 +107,7 @@ class SalesAgent:
                 "销售 AI 主要用于线索分级、跟进提醒和 CRM 记录。"
                 "如果你是在做研究，可以告诉我你想比较哪一类能力。"
             )
-            return AgentOutput(message, tool_calls, state)
+            return self._output(message, tool_calls, state, transcript)
 
         if self._has_business_context(transcript):
             self._call_tool(
@@ -128,14 +129,31 @@ class SalesAgent:
                 "AI 可以先从线索优先级、自动提醒、CRM 记录和下一步建议做起。"
                 f"{question}"
             )
-            return AgentOutput(message, tool_calls, state)
+            return self._output(message, tool_calls, state, transcript)
 
         state.next_action = "clarify"
         message = (
             "可以，我先帮你判断是否适合用 AI 做销售跟进。"
             "请问你们公司规模、销售团队人数，以及现在最常漏掉的是哪类线索？"
         )
-        return AgentOutput(message, tool_calls, state)
+        return self._output(message, tool_calls, state, transcript)
+
+    def _output(
+        self,
+        message: str,
+        tool_calls: list[ToolCallRecord],
+        state: AgentState,
+        transcript: str,
+    ) -> AgentOutput:
+        final_message = maybe_rewrite_message(
+            enabled=self.prefer_real_llm,
+            model=self.model,
+            system_prompt=self.system_prompt,
+            transcript=transcript,
+            draft_message=message,
+            state=state.to_public_dict(),
+        )
+        return AgentOutput(final_message, tool_calls, state)
 
     def _call_tool(
         self,
@@ -186,7 +204,7 @@ class SalesAgent:
             state.next_action = "ask_for_email"
             state.missing_info = sorted(set(state.missing_info + ["email"]))
             message = "可以安排 Demo。请发我你的邮箱，我就帮你查询可预约时间。"
-            return AgentOutput(message, tool_calls, state)
+            return self._output(message, tool_calls, state, transcript)
 
         calendar = self._call_tool(
             state,
@@ -221,7 +239,7 @@ class SalesAgent:
             f"好的，已为你安排 {slot['label']} 的 Demo，邀请会发送到 {email}。"
             f"预约编号是 {booking['booking_id']}。"
         )
-        return AgentOutput(message, tool_calls, state)
+        return self._output(message, tool_calls, state, transcript)
 
     def _extract_facts(self, transcript: str) -> dict[str, Any]:
         numbers = [int(num) for num in re.findall(r"\d+", transcript)]
