@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sales-agent-harness"
+version = "0.1.0"
+description = "Minimal sales agent harness with tools, state, evaluation, and Langfuse scoring."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+real-llm = ["openai>=1.0.0"]
+observability = ["langfuse>=2.0.0"]
+excel = ["openpyxl>=3.1.0"]
+dev = ["pytest>=8.0.0"]
+
+[project.scripts]
+sales-agent = "sales_agent_harness.cli:main"
+sales-agent-eval = "sales_agent_harness.eval_runner:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
