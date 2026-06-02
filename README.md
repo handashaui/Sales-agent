@@ -19,6 +19,45 @@ LLM message polishing, and optional Langfuse scoring.
 - Runs 12 automated eval cases with fixed scoring and optional LLM-as-judge.
 - Generates an Excel workbook for the eval test set and results.
 
+## Assignment Submission Materials
+
+This repository is prepared for the AI Harness / Agent developer written test.
+It contains both the runnable harness and the required written materials:
+
+- First part answer: `docs/销售agent故障诊断与重构.md`
+  - Diagnoses the broken sales-agent conversations.
+  - Summarizes the planned agent improvements, tool-use strategy, test examples,
+    and prompt iteration notes.
+  - Supporting notes copied from the Obsidian vault:
+    - `docs/sales system prompt.md`
+    - `docs/tool use strategy.md`
+    - `docs/test examples.md`
+    - `docs/prompt iteration.md`
+- AI collaboration log: `docs/AI协作全过程日志.md`
+  - Records the AI tools used, problem decomposition, key prompts, iterations,
+    validation process, AI-output errors, and final reflection.
+- Runnable agent harness:
+  - `src/sales_agent_harness/agent.py`
+  - `src/sales_agent_harness/tools.py`
+  - `src/sales_agent_harness/cli.py`
+  - `src/sales_agent_harness/service.py`
+- Evaluation runner and test set:
+  - `src/sales_agent_harness/eval_runner.py`
+  - `evals/sales_cases.json`
+  - `evals/sales_agent_eval_cases.xlsx`
+- Additional evaluation notes: `docs/eval_summary.md`
+- Earlier concise iteration note: `docs/ai_iteration_log.md`
+
+The current solution's three largest risks are:
+
+- The knowledge base, CRM, and calendar are mock implementations, so integration
+  failures and API edge cases are not fully covered.
+- The deterministic policy is intentionally small and may miss unusual user
+  wording outside the evaluation set.
+- Real LLM usage only rewrites the final assistant message; full LLM-driven tool
+  planning would require stricter guardrails and broader eval coverage before
+  production use.
+
 ## Install
 
 ```bash
