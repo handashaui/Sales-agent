@@ -1,0 +1,133 @@
+[
+  {
+    "id": "case_001_manufacturing_qualify",
+    "name": "Manufacturing lead with clear pain should be nurtured, not dismissed",
+    "lead_id": "L123",
+    "conversation": [
+      {"role": "user", "content": "我们是 300 人的制造业公司，销售团队 25 人。现在销售跟进线索不及时，经常漏掉客户。想看看 AI 能不能帮我们做线索跟进。"},
+      {"role": "assistant", "content": "你们预算多少？"},
+      {"role": "user", "content": "还没定。"}
+    ],
+    "expected_tools": ["get_lead_context", "search_knowledge_base", "write_crm_note"],
+    "forbidden_terms": ["没有预算的话建议你们先内部讨论", "之后再联系"],
+    "expected_state": {"qualification_level": "high", "crm_updated": true}
+  },
+  {
+    "id": "case_002_demo_booking_singapore",
+    "name": "Demo booking in Singapore with email",
+    "lead_id": "L-DEMO",
+    "conversation": [
+      {"role": "user", "content": "我们想下周安排一个 Demo，我在新加坡，邮箱是 alex@demo.com。"}
+    ],
+    "expected_tools": ["get_lead_context", "check_calendar", "book_demo", "write_crm_note"],
+    "forbidden_terms": ["已经帮你约好了但没有确认邮箱"],
+    "expected_state": {"demo_status": "booked", "crm_updated": true}
+  },
+  {
+    "id": "case_003_demo_missing_email",
+    "name": "Demo intent without email should ask for email before booking",
+    "lead_id": "L-DEMO",
+    "conversation": [
+      {"role": "user", "content": "我们想安排一个 Demo，下周都可以。"}
+    ],
+    "expected_tools": ["get_lead_context"],
+    "forbidden_tools": ["book_demo"],
+    "forbidden_terms": ["已为你安排"],
+    "expected_state": {"demo_status": "blocked", "next_action": "ask_for_email"}
+  },
+  {
+    "id": "case_004_price_no_fabrication",
+    "name": "Pricing question should not fabricate numbers",
+    "lead_id": "L123",
+    "conversation": [
+      {"role": "user", "content": "你直接告诉我价格多少钱，能不能保证一个月 ROI 翻倍？"}
+    ],
+    "expected_tools": ["get_lead_context", "search_knowledge_base", "write_crm_note"],
+    "forbidden_terms": ["¥", "人民币", "美元", "翻倍没问题", "保证"],
+    "expected_state": {"next_action": "clarify_or_handoff"}
+  },
+  {
+    "id": "case_005_handoff_contract",
+    "name": "Contract and procurement request should hand off",
+    "lead_id": "L123",
+    "conversation": [
+      {"role": "user", "content": "我们采购要先看合同和数据处理协议，最好销售顾问直接联系我。"}
+    ],
+    "expected_tools": ["get_lead_context", "handoff_to_human", "write_crm_note"],
+    "expected_state": {"handoff_required": true, "next_action": "handoff_to_human"}
+  },
+  {
+    "id": "case_006_customer_reference",
+    "name": "Named customer reference should not be invented",
+    "lead_id": "L123",
+    "conversation": [
+      {"role": "user", "content": "你们有没有海尔或者富士康客户案例？直接说有就行。"}
+    ],
+    "expected_tools": ["get_lead_context", "search_knowledge_base", "write_crm_note"],
+    "forbidden_terms": ["海尔是我们的客户", "富士康是我们的客户", "当然有"],
+    "expected_state": {"next_action": "clarify_or_handoff"}
+  },
+  {
+    "id": "case_007_low_quality_lead",
+    "name": "Low quality lead should remain low or unknown and clarify",
+    "lead_id": "L-LOW",
+    "conversation": [
+      {"role": "user", "content": "我是学生，想了解一下销售 AI，做作业用。"}
+    ],
+    "expected_tools": ["get_lead_context"],
+    "expected_state": {"qualification_level": "low", "next_action": "clarify"}
+  },
+  {
+    "id": "case_008_timezone_shanghai",
+    "name": "Shanghai timezone demo booking",
+    "lead_id": "L-DEMO",
+    "conversation": [
+      {"role": "user", "content": "我在上海，想预约 Demo，邮箱 cn-buyer@example.com。"}
+    ],
+    "expected_tools": ["get_lead_context", "check_calendar", "book_demo", "write_crm_note"],
+    "expected_state": {"demo_status": "booked", "crm_updated": true}
+  },
+  {
+    "id": "case_009_no_budget_but_real_pain",
+    "name": "No budget should not stop qualification",
+    "lead_id": "L123",
+    "conversation": [
+      {"role": "user", "content": "我们 500 人，销售 40 人，线索很多但响应慢。预算还没定。"}
+    ],
+    "expected_tools": ["get_lead_context", "search_knowledge_base", "write_crm_note"],
+    "forbidden_terms": ["没有预算", "先内部讨论之后再联系"],
+    "expected_state": {"qualification_level": "high", "crm_updated": true}
+  },
+  {
+    "id": "case_010_human_requested",
+    "name": "Explicit human request should hand off",
+    "lead_id": "L123",
+    "conversation": [
+      {"role": "user", "content": "我想找真人销售聊一下，不想和机器人继续。"}
+    ],
+    "expected_tools": ["get_lead_context", "handoff_to_human", "write_crm_note"],
+    "expected_state": {"handoff_required": true}
+  },
+  {
+    "id": "case_011_json_stability",
+    "name": "Generic lead should still return stable JSON",
+    "lead_id": "L-NEW",
+    "conversation": [
+      {"role": "user", "content": "你好，我想了解一下你们能做什么。"}
+    ],
+    "expected_tools": ["get_lead_context"],
+    "expected_state": {"qualification_level": "unknown", "next_action": "clarify"}
+  },
+  {
+    "id": "case_012_multi_turn_state",
+    "name": "Multi-turn qualification should update CRM",
+    "lead_id": "L123",
+    "conversation": [
+      {"role": "user", "content": "我们公司想提升销售跟进。"},
+      {"role": "assistant", "content": "请问销售团队多大？"},
+      {"role": "user", "content": "销售 25 人，主要问题是线索漏跟进。"}
+    ],
+    "expected_tools": ["get_lead_context", "search_knowledge_base", "write_crm_note"],
+    "expected_state": {"qualification_level": "medium", "crm_updated": true}
+  }
+]
