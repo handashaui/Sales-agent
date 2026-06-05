@@ -22,7 +22,8 @@ observability = ["langfuse>=2.0.0"]
 dev = ["pytest>=8.0.0"]
 
 [project.scripts]
-sales-agent = "sales_agent_harness.eval_runner:main"
+sales-agent = "sales_agent_harness.cli:main"
+sales-agent-eval = "sales_agent_harness.eval_runner:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

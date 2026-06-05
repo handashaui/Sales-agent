@@ -1,9 +1,12 @@
-"""Integration tests — require ANTHROPIC_API_KEY."""
+"""Integration tests — require a configured model provider API key."""
 
+import os
+import shutil
 import unittest
 
-from sales_agent_harness.runner import AgentRunner
 from sales_agent_harness.eval_runner import REQUIRED_STATE_KEYS, fixed_rule_scores
+from sales_agent_harness.runner import AgentRunner
+from sales_agent_harness.tools._db import DATA_DIR
 
 
 def tool_names(output: dict) -> list[str]:
@@ -13,12 +16,42 @@ def tool_names(output: dict) -> list[str]:
 class SalesAgentTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        provider = os.getenv("SALES_AGENT_PROVIDER", "anthropic").lower()
+        if provider in {"xiaomi", "mimo"}:
+            has_key = os.getenv("XIAOMI_API_KEY") or os.getenv("MIMO_API_KEY")
+            key_name = "XIAOMI_API_KEY or MIMO_API_KEY"
+        else:
+            has_key = os.getenv("ANTHROPIC_API_KEY")
+            key_name = "ANTHROPIC_API_KEY"
+
+        if not has_key:
+            raise unittest.SkipTest(f"Set {key_name} to run integration tests.")
+
         cls.runner = AgentRunner()
+
+    def setUp(self):
+        self._clean_runtime_data()
+
+    def tearDown(self):
+        self._clean_runtime_data()
+
+    @staticmethod
+    def _clean_runtime_data() -> None:
+        for rel_path in ("crm/demos", "crm/notes", "handoffs"):
+            shutil.rmtree(DATA_DIR / rel_path, ignore_errors=True)
 
     def test_demo_booking_flow(self):
         output = self.runner.run(
             "L-DEMO",
-            [{"role": "user", "content": "我们想下周安排一个 Demo，我在新加坡，邮箱是 alex@demo.com。"}],
+            [
+                {
+                    "role": "user",
+                    "content": (
+                        "我们想下周安排一个 Demo，我在新加坡，邮箱是 alex@demo.com。"
+                        "主要想解决线索跟进慢和 CRM 记录不完整的问题。"
+                    ),
+                }
+            ],
         ).to_dict()
         names = tool_names(output)
         self.assertIn("get_lead_context", names)
@@ -73,7 +106,13 @@ class SalesAgentTests(unittest.TestCase):
             "name": "demo",
             "lead_id": "L-DEMO",
             "conversation": [
-                {"role": "user", "content": "我在上海，想预约 Demo，邮箱 cn-buyer@example.com。"}
+                {
+                    "role": "user",
+                    "content": (
+                        "我在上海，想预约 Demo，邮箱 cn-buyer@example.com。"
+                        "我们想评估 AI 自动跟进销售线索。"
+                    ),
+                }
             ],
             "expected_tools": ["get_lead_context", "check_calendar", "book_demo", "write_crm_note"],
             "expected_state": {"demo_status": "booked", "crm_updated": True},
