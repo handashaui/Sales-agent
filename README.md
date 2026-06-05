@@ -63,33 +63,47 @@ The current solution's three largest risks are:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e ".[dev,real-llm,observability,excel]"
+python -m pip install -e ".[dev,observability]"
 ```
 
-The core CLI works with no required third-party runtime dependencies. Optional
-extras enable OpenAI, Langfuse, pytest, and Excel generation.
+Optional extras enable Langfuse and pytest.
 
 ## Environment
 
-Real LLM usage is optional and only activates when credentials are present.
+The agent defaults to Anthropic. Set `SALES_AGENT_PROVIDER=xiaomi` to use the
+Xiaomi MiMo OpenAI-compatible API instead.
 
 ```bash
-export OPENAI_API_KEY="..."
-export SALES_AGENT_MODEL="gpt-4.1-mini"
-export SALES_AGENT_USE_REAL_LLM=1
+# Anthropic / Claude
+export ANTHROPIC_API_KEY="..."
+export SALES_AGENT_PROVIDER="anthropic"
+export SALES_AGENT_MODEL="claude-sonnet-4-6"
+
+# Xiaomi MiMo
+export XIAOMI_API_KEY="..."
+export SALES_AGENT_PROVIDER="xiaomi"
+export SALES_AGENT_MODEL="mimo-v2.5-pro"
+export XIAOMI_BASE_URL="https://api.xiaomimimo.com/v1"
 
 export LANGFUSE_PUBLIC_KEY="..."
 export LANGFUSE_SECRET_KEY="..."
 export LANGFUSE_HOST="https://cloud.langfuse.com"
 ```
 
-Do not commit API keys. A missing key falls back to deterministic local behavior
-for the agent and heuristic judging for eval.
+Do not commit API keys.
 
 ## Run The Agent
 
 ```bash
-PYTHONPATH=src python -m sales_agent_harness.cli \
+python main.py --input examples/demo_request.json
+```
+
+Run with Xiaomi MiMo explicitly:
+
+```bash
+python main.py \
+  --provider xiaomi \
+  --model mimo-v2.5-pro \
   --input examples/demo_request.json
 ```
 
@@ -134,7 +148,17 @@ curl -X POST http://127.0.0.1:8080/run \
 ## Run Eval
 
 ```bash
-PYTHONPATH=src python -m sales_agent_harness.eval_runner \
+python -m sales_agent_harness.eval_runner \
+  --cases evals/sales_cases.json \
+  --output-dir eval_results
+```
+
+Run eval with Xiaomi MiMo:
+
+```bash
+python -m sales_agent_harness.eval_runner \
+  --provider xiaomi \
+  --model mimo-v2.5-pro \
   --cases evals/sales_cases.json \
   --output-dir eval_results
 ```
@@ -142,7 +166,7 @@ PYTHONPATH=src python -m sales_agent_harness.eval_runner \
 With Langfuse tracing and scoring:
 
 ```bash
-PYTHONPATH=src python -m sales_agent_harness.eval_runner \
+python -m sales_agent_harness.eval_runner \
   --cases evals/sales_cases.json \
   --output-dir eval_results \
   --trace-langfuse \

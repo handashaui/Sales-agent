@@ -1,0 +1,44 @@
+[
+  {
+    "slot_id": "sg-mon-0900",
+    "label": "周一 09:00 SGT",
+    "timezone": "Asia/Singapore",
+    "duration_minutes": 30,
+    "available": true
+  },
+  {
+    "slot_id": "sg-tue-1000",
+    "label": "周二 10:00 SGT",
+    "timezone": "Asia/Singapore",
+    "duration_minutes": 30,
+    "available": true
+  },
+  {
+    "slot_id": "sg-wed-1500",
+    "label": "周三 15:00 SGT",
+    "timezone": "Asia/Singapore",
+    "duration_minutes": 30,
+    "available": true
+  },
+  {
+    "slot_id": "cn-tue-1000",
+    "label": "周二 10:00 CST",
+    "timezone": "Asia/Shanghai",
+    "duration_minutes": 30,
+    "available": true
+  },
+  {
+    "slot_id": "cn-wed-1500",
+    "label": "周三 15:00 CST",
+    "timezone": "Asia/Shanghai",
+    "duration_minutes": 30,
+    "available": true
+  },
+  {
+    "slot_id": "cn-thu-1400",
+    "label": "周四 14:00 CST",
+    "timezone": "Asia/Shanghai",
+    "duration_minutes": 30,
+    "available": true
+  }
+]

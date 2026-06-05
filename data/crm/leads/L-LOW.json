@@ -1,0 +1,11 @@
+{
+  "lead_id": "L-LOW",
+  "company": null,
+  "company_size": null,
+  "sales_team_size": null,
+  "industry": "unknown",
+  "region": "unknown",
+  "owner": "queue@example.com",
+  "source": "newsletter",
+  "known_pains": []
+}

@@ -1,0 +1,11 @@
+{
+  "lead_id": "L-DEMO",
+  "company": "SaaS Demo Co",
+  "company_size": 80,
+  "sales_team_size": 10,
+  "industry": "software",
+  "region": "Singapore",
+  "owner": "demo-team@example.com",
+  "source": "event",
+  "known_pains": []
+}

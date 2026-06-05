@@ -1,0 +1,11 @@
+{
+  "lead_id": "L123",
+  "company": "Manufacturing Corp",
+  "company_size": 300,
+  "sales_team_size": 25,
+  "industry": "manufacturing",
+  "region": "APAC",
+  "owner": "sales-apac@example.com",
+  "source": "website",
+  "known_pains": ["slow lead response", "missed follow-up", "poor CRM hygiene"]
+}

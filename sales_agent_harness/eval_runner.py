@@ -9,9 +9,8 @@ import os
 from pathlib import Path
 from typing import Any
 
-from .agent import SalesAgent
 from .langfuse_scoring import LangfuseScorer
-
+from .runner import AgentRunner
 
 REQUIRED_TOP_LEVEL_KEYS = {"assistant_message", "tool_calls", "state"}
 REQUIRED_STATE_KEYS = {
@@ -20,6 +19,7 @@ REQUIRED_STATE_KEYS = {
     "next_action",
     "risk_flags",
     "demo_status",
+    "demo_booked",
     "crm_updated",
     "handoff_required",
     "run_id",
@@ -34,7 +34,9 @@ def tools_in_order(actual: list[str], expected: list[str]) -> bool:
     return cursor == len(expected)
 
 
-def fixed_rule_scores(case: dict[str, Any], output: dict[str, Any]) -> tuple[dict[str, float], dict[str, str]]:
+def fixed_rule_scores(
+    case: dict[str, Any], output: dict[str, Any]
+) -> tuple[dict[str, float], dict[str, str]]:
     comments: dict[str, str] = {}
     scores: dict[str, float] = {}
     actual_tools = [call["tool_name"] for call in output.get("tool_calls", [])]
@@ -71,24 +73,31 @@ def fixed_rule_scores(case: dict[str, Any], output: dict[str, Any]) -> tuple[dic
     comments["state_correctness"] = json.dumps(mismatches, ensure_ascii=False)
 
     asks_budget_first = "预算" in message and len(case["conversation"]) <= 2
-    scores["policy_compliance"] = float(not asks_budget_first and scores["no_fabrication"] == 1.0)
-    comments["policy_compliance"] = "Checks no budget-first behavior and no fabricated claims."
+    scores["policy_compliance"] = float(
+        not asks_budget_first and scores["no_fabrication"] == 1.0
+    )
+    comments["policy_compliance"] = "No budget-first behavior and no fabricated claims."
 
     scores["handoff_correctness"] = float(
-        state.get("handoff_required") == expected_state.get("handoff_required", state.get("handoff_required"))
+        state.get("handoff_required")
+        == expected_state.get("handoff_required", state.get("handoff_required"))
     )
     scores["crm_update"] = float(
-        state.get("crm_updated") == expected_state.get("crm_updated", state.get("crm_updated"))
+        state.get("crm_updated")
+        == expected_state.get("crm_updated", state.get("crm_updated"))
     )
     scores["demo_flow"] = float(
-        state.get("demo_status") == expected_state.get("demo_status", state.get("demo_status"))
+        state.get("demo_status")
+        == expected_state.get("demo_status", state.get("demo_status"))
     )
     scores["overall_fixed"] = round(sum(scores.values()) / len(scores), 4)
     comments["overall_fixed"] = "Average of fixed deterministic scores."
     return scores, comments
 
 
-def heuristic_llm_judge(case: dict[str, Any], output: dict[str, Any]) -> tuple[float, str]:
+def heuristic_llm_judge(
+    case: dict[str, Any], output: dict[str, Any]
+) -> tuple[float, str]:
     message = output.get("assistant_message", "")
     state = output.get("state", {})
     score = 1.0
@@ -102,60 +111,63 @@ def heuristic_llm_judge(case: dict[str, Any], output: dict[str, Any]) -> tuple[f
     if case.get("expected_state", {}).get("handoff_required") and not state.get("handoff_required"):
         score -= 0.3
         reasons.append("missed handoff")
-    if case.get("expected_state", {}).get("demo_status") == "booked" and state.get("demo_status") != "booked":
+    if (
+        case.get("expected_state", {}).get("demo_status") == "booked"
+        and state.get("demo_status") != "booked"
+    ):
         score -= 0.3
         reasons.append("missed demo booking")
     return max(score, 0.0), "; ".join(reasons) or "Heuristic judge passed."
 
 
-def openai_llm_judge(case: dict[str, Any], output: dict[str, Any], model: str | None) -> tuple[float, str]:
-    if not os.getenv("OPENAI_API_KEY"):
+def anthropic_llm_judge(
+    case: dict[str, Any], output: dict[str, Any], model: str | None
+) -> tuple[float, str]:
+    if not os.getenv("ANTHROPIC_API_KEY"):
         return heuristic_llm_judge(case, output)
     try:
-        from openai import OpenAI  # type: ignore
+        import anthropic
 
-        client = OpenAI()
+        client = anthropic.Anthropic()
         prompt = (
-            "Score this sales agent output from 0 to 1. Judge policy compliance, "
-            "tool behavior implied by output, no fabrication, handoff correctness, "
-            "CRM update, and demo flow. Return JSON with score and reason.\n"
+            "Score this B2B sales agent output 0.0–1.0. "
+            "Criteria: no fabrication, no budget-first, correct tools, handoff accuracy, "
+            "CRM update, demo flow. Return JSON {score: float, reason: string}.\n"
             f"CASE:\n{json.dumps(case, ensure_ascii=False)}\n"
             f"OUTPUT:\n{json.dumps(output, ensure_ascii=False)}"
         )
-        response = client.chat.completions.create(
-            model=model or "gpt-4.1-mini",
-            messages=[
-                {"role": "system", "content": "You are a strict evaluator."},
-                {"role": "user", "content": prompt},
-            ],
-            response_format={"type": "json_object"},
+        response = client.messages.create(
+            model=model or os.getenv("SALES_AGENT_MODEL", "claude-haiku-4-5-20251001"),
+            max_tokens=256,
+            messages=[{"role": "user", "content": prompt}],
         )
-        content = response.choices[0].message.content or "{}"
-        parsed = json.loads(content)
+        content = response.content[0].text if response.content else "{}"
+        start, end = content.find("{"), content.rfind("}") + 1
+        parsed = json.loads(content[start:end]) if start >= 0 else {}
         return float(parsed.get("score", 0.0)), str(parsed.get("reason", ""))
     except Exception as exc:
         score, reason = heuristic_llm_judge(case, output)
-        return score, f"LLM judge fallback: {exc}; {reason}"
+        return score, f"LLM judge fallback ({exc}): {reason}"
 
 
 def run_eval(
     cases_path: Path,
     output_dir: Path,
-    prompt_version: str,
+    model: str | None,
     judge_model: str | None,
     trace_langfuse: bool,
+    provider: str | None = None,
 ) -> dict[str, Any]:
     cases = json.loads(cases_path.read_text(encoding="utf-8"))
     output_dir.mkdir(parents=True, exist_ok=True)
-    agent = SalesAgent(prompt_version=prompt_version, model=judge_model)
+    runner = AgentRunner(model=model, provider=provider)
     scorer = LangfuseScorer(enabled=trace_langfuse)
-    rows = []
-    detailed = []
+    rows, detailed = [], []
 
     for case in cases:
-        agent_output = agent.run(case["lead_id"], case["conversation"]).to_dict()
+        agent_output = runner.run(case["lead_id"], case["conversation"]).to_dict()
         scores, comments = fixed_rule_scores(case, agent_output)
-        judge_score, judge_reason = openai_llm_judge(case, agent_output, judge_model)
+        judge_score, judge_reason = anthropic_llm_judge(case, agent_output, judge_model)
         scores["llm_as_judge"] = judge_score
         comments["llm_as_judge"] = judge_reason
         pass_rate = round(sum(scores.values()) / len(scores), 4)
@@ -173,35 +185,42 @@ def run_eval(
 
     summary = {
         "case_count": len(rows),
-        "pass_count": sum(1 for row in rows if row["passed"]),
-        "average_score": round(sum(row["overall_score"] for row in rows) / len(rows), 4),
+        "pass_count": sum(1 for r in rows if r["passed"]),
+        "average_score": round(sum(r["overall_score"] for r in rows) / len(rows), 4),
         "rows": rows,
     }
     (output_dir / "eval_results.json").write_text(
         json.dumps({"summary": summary, "details": detailed}, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    with (output_dir / "eval_summary.csv").open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()))
+    with (output_dir / "eval_summary.csv").open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
         writer.writeheader()
         writer.writerows(rows)
     return summary
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run Sales Agent Harness evaluation.")
+    parser = argparse.ArgumentParser()
     parser.add_argument("--cases", default="evals/sales_cases.json")
     parser.add_argument("--output-dir", default="eval_results")
-    parser.add_argument("--prompt-version", default="v1")
+    parser.add_argument("--model", default=None, help="Agent model ID override.")
     parser.add_argument("--judge-model", default=None)
+    parser.add_argument(
+        "--provider",
+        default=None,
+        choices=["anthropic", "xiaomi", "mimo"],
+        help="Agent model provider override. Defaults to SALES_AGENT_PROVIDER or anthropic.",
+    )
     parser.add_argument("--trace-langfuse", action="store_true")
     args = parser.parse_args()
     summary = run_eval(
-        cases_path=Path(args.cases),
-        output_dir=Path(args.output_dir),
-        prompt_version=args.prompt_version,
-        judge_model=args.judge_model,
-        trace_langfuse=args.trace_langfuse,
+        Path(args.cases),
+        Path(args.output_dir),
+        args.model,
+        args.judge_model,
+        args.trace_langfuse,
+        args.provider,
     )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0

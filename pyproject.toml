@@ -4,25 +4,30 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sales-agent-harness"
-version = "0.1.0"
-description = "Minimal sales agent harness with tools, state, evaluation, and Langfuse scoring."
+version = "0.2.0"
+description = "B2B sales agent harness: LangGraph ReAct agent with 6 file-backed tools, structured state, and eval runner."
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "langgraph>=0.3.0",
+    "langchain-anthropic>=0.3.0",
+    "langchain-core>=0.3.0",
+    "langchain-openai>=0.3.0",
+    "anthropic>=0.40.0",
+    "pydantic>=2.0.0",
+]
 
 [project.optional-dependencies]
-real-llm = ["openai>=1.0.0"]
 observability = ["langfuse>=2.0.0"]
-excel = ["openpyxl>=3.1.0"]
 dev = ["pytest>=8.0.0"]
 
 [project.scripts]
-sales-agent = "sales_agent_harness.cli:main"
-sales-agent-eval = "sales_agent_harness.eval_runner:main"
+sales-agent = "sales_agent_harness.eval_runner:main"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["sales_agent_harness*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["."]

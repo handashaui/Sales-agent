@@ -1,0 +1,38 @@
+[
+  {
+    "id": "pricing_policy",
+    "title": "Pricing policy",
+    "tags": ["price", "pricing", "报价", "价格", "cost", "费用", "多少钱"],
+    "content": "Public pricing is not committed by the agent. Exact pricing depends on scope, team size, and integration requirements, and must be confirmed by a sales representative. Do not quote any figures."
+  },
+  {
+    "id": "roi_policy",
+    "title": "ROI and performance guarantee policy",
+    "tags": ["roi", "guarantee", "保证", "承诺", "sla", "performance", "翻倍"],
+    "content": "ROI estimates and performance guarantees must be validated by a sales engineer with access to the customer's actual data. The agent cannot commit to specific metrics, timelines, or outcomes."
+  },
+  {
+    "id": "reference_policy",
+    "title": "Customer reference policy",
+    "tags": ["case", "案例", "customer", "客户", "reference", "海尔", "富士康", "named"],
+    "content": "Named customer references require approval from the reference team. The agent may describe general use cases and product capabilities, but may not confirm or deny any named customer relationship."
+  },
+  {
+    "id": "manufacturing_use_case",
+    "title": "Manufacturing sales AI use case",
+    "tags": ["manufacturing", "制造", "线索", "follow-up", "lead", "apac"],
+    "content": "Common pain points in manufacturing B2B sales: slow lead response time (>24h), missed follow-up windows, inconsistent CRM hygiene, and uneven prioritization across sales reps. Sales AI automates lead scoring, response reminders, CRM note generation, and next-step recommendations."
+  },
+  {
+    "id": "product_overview",
+    "title": "Sales AI product overview",
+    "tags": ["sales", "ai", "crm", "lead", "qualification", "demo", "overview"],
+    "content": "The AI sales assistant qualifies inbound leads, asks discovery questions, books demo appointments, and writes structured CRM notes. It does not make pricing commitments, legal promises, or named customer claims."
+  },
+  {
+    "id": "saas_use_case",
+    "title": "SaaS company sales AI use case",
+    "tags": ["saas", "software", "tech", "singapore", "apac"],
+    "content": "SaaS companies use sales AI to handle high inbound volume with small SDR teams: auto-qualify website leads, route high-intent prospects to AEs, and reduce time from first touch to demo by 40-60% on average (varies by pipeline)."
+  }
+]
